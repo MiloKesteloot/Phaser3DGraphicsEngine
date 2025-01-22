@@ -187,7 +187,7 @@ vec2 threeDeeToTwoDee(vec3 p) {
 }
 
 Vec3Pair cropVec3(Vec3Pair pair) {
-	if (pair.a.z < 0.0 && pair.b.z < 0.0) return pair;d
+	if (pair.a.z < 0.0 && pair.b.z < 0.0) return pair;
 	float Zc = 1.0;
 
 }
