@@ -2,8 +2,12 @@
 
 let config = {
     type: Phaser.WEBGL,
-    width: 800,
-    height: 600,
+    // width: 800,
+    // height: 600,
+    scale: {
+        mode: Phaser.Scale.RESIZE, // Fit the game to the screen
+        autoCenter: Phaser.Scale.CENTER_BOTH // Center the game canvas
+    },
     scene: [ Menu, Play ]
 };
 

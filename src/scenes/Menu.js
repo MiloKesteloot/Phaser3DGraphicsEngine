@@ -3,13 +3,14 @@ class Menu extends Phaser.Scene {
         super("menuScene");
 
 		this.shader = null;
-		this.cameraPos = new Phaser.Math.Vector3(0, 0, 0);
-		this.cameraAngle = { yaw: 45, pitch: 0 };
+		this.cameraPos = new Phaser.Math.Vector3(2, 0, 4);
+		this.cameraAngle = { yaw: 27, pitch: 0 };
 		this.moveSpeed = 0.03;
 		this.xSense = 0.06;
 		this.ySense = 0.1;
 		this.mouseMovementX = 0;
 		this.mouseMovementY = 0;
+		this.cameraYVelocity = 0;
     }
 	
 	camToList() {
@@ -45,11 +46,16 @@ class Menu extends Phaser.Scene {
             }
         );
 
-		this.shader = this.add.shader(tesseract, 400, 300, 800, 600);
+		const width = document.querySelector("canvas").clientWidth;
+		const height = document.querySelector("canvas").clientHeight;
+		this.shader = this.add.shader(tesseract, 0, 0, width, height).setOrigin(0, 0);
+
+		addEventListener("resize", (event) => {
+			this.shader.width = document.querySelector("canvas").clientWidth;
+			this.shader.height = document.querySelector("canvas").clientHeight;
+		});
 
 		this.shader.setPointer(this.input.activePointer);
-
-
 
 		this.input.on('pointerdown', function (pointer) {
 			this.input.mouse.requestPointerLock();
@@ -66,6 +72,7 @@ class Menu extends Phaser.Scene {
 		this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
 		this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
 		this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+		this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 	}
 	
 	update(time, delta) {
@@ -93,6 +100,21 @@ class Menu extends Phaser.Scene {
 			this.cameraPos.x -= vec.x;
 			this.cameraPos.z -= vec.y;
 		};
+
+		if (this.cameraPos.y == 0 && this.keySpace.isDown) {
+			this.cameraYVelocity = 0.1;
+		}
+
+		if (this.cameraPos.y > 0 || this.cameraYVelocity != 0) {
+
+			this.cameraYVelocity -= 0.003;
+			this.cameraPos.y += this.cameraYVelocity;
+
+			if (this.cameraPos.y <= 0) {
+				this.cameraPos.y = 0;
+				this.cameraYVelocity = 0;
+			}
+		}
 
 		this.shader.setUniform("cameraPosX.value", this.cameraPos.x);
 		this.shader.setUniform("cameraPosY.value", this.cameraPos.y);
@@ -187,9 +209,31 @@ vec2 threeDeeToTwoDee(vec3 p) {
 }
 
 Vec3Pair cropVec3(Vec3Pair pair) {
-	if (pair.a.z < 0.0 && pair.b.z < 0.0) return pair;
-	float Zc = 1.0;
+	float Cz = -0.1;
+	if (pair.a.z < Cz && pair.b.z < Cz) return pair;
+	if (pair.a.z >= Cz && pair.b.z >= Cz) return createVec3Pair(vec3(0), vec3(0), vec3(0));
 
+	vec3 A;
+	vec3 B;
+
+	if (pair.b.z < Cz) {
+		A = pair.a;
+		B = pair.b;
+	} else {
+		A = pair.b;
+		B = pair.a;
+	}
+
+	float t = (Cz-A.z)/(B.z-A.z);
+	vec3 C = (B-A)*t+A;
+
+	if (pair.b.z < Cz) {
+		pair.a = C;
+	} else {
+		pair.b = C;
+	}
+
+	return pair;
 }
 
 vec4 threeDeeToTwoDee(Vec3Pair pair) {
@@ -197,7 +241,9 @@ vec4 threeDeeToTwoDee(Vec3Pair pair) {
 	pair.a = morphPoint(pair.a);
 	pair.b = morphPoint(pair.b);
 
-	if (pair.a.z >= 0.0 && pair.b.z >= 0.0) {
+	pair = cropVec3(pair);
+
+	if (length(pair.a) == 0.0 && length(pair.b) == 0.0) {
 		return vec4(0);
 	}
 
@@ -297,6 +343,13 @@ float distanceToLine(vec2 p, vec4 beam) {
     return length(pa - ba * t);
 }
 
+float getColOfBeam(Vec3Pair beam) {
+	vec3 a = morphPoint(beam.a);
+	vec3 b = morphPoint(beam.b);
+	vec3 midPoint = (a-b)/2.0+a;
+	return length(midPoint)/3.0;
+}
+
 vec3 getCol(vec2 p) {
     vec3 col = vec3(0.0);
     float minDist = 10000.0;
@@ -305,10 +358,14 @@ vec3 getCol(vec2 p) {
 		if (i > numLines) {
 			break;
 		}
+
+		float distToBeam = getColOfBeam(lines[i]);
+
+		
 		vec4 point = threeDeeToTwoDee(lines[i]);
 		if (length(point) == 0.0) continue;
         minDist = distanceToLine(p, point);
-        col += 0.02 / minDist * lines[i].col; // Adjust color and intensity here
+        col += 0.02 / minDist * (lines[i].col/distToBeam); // Adjust color and intensity here
     }
         
     return col;
@@ -316,7 +373,7 @@ vec3 getCol(vec2 p) {
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-	cameraPos = vec3(cameraPosX, cameraPosY, cameraPosZ);
+	cameraPos = vec3(cameraPosX, -cameraPosY, cameraPosZ);
 	cameraAngle = vec2(cameraAngleYaw, cameraAnglePitch);
 
     setUp();
