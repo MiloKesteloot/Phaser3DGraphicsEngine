@@ -152,7 +152,7 @@ varying vec2 fragCoord;
 #define MAX_LENGTH 128
 
 vec3 green = vec3(0.2, 1.0, 0.5);
-// vec3 red = vec3(1.0, 0.5, 0.2);
+vec3 red = vec3(1.0, 0.5, 0.2);
 // vec3 blue = vec3(0.2, 0.5, 1.0);
 
 struct Vec3Pair {
@@ -331,6 +331,12 @@ void setUp() {
     addLine(lub*1.25, lub*0.75, col*0.75);
     addLine(rdb*1.25, rdb*0.75, col*0.75);
     addLine(ldb*1.25, ldb*0.75, col*0.75);
+
+	float top = 0.25;
+
+	addLine(vec3(0, 1, 10), vec3(1, top, 10), red);
+	addLine(vec3(1, top, 10), vec3(-1, top, 10), red);
+	addLine(vec3(-1, top, 10), vec3(0, 1, 10), red);
 }
 
 float distanceToLine(vec2 p, vec4 beam) {
